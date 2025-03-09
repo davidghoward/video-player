@@ -114,7 +114,7 @@
     </div>
 
     <script src="https://vjs.zencdn.net/8.10.0/video.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.9.0/dist/videojs-http-streaming.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.17.0/dist/videojs-http-streaming.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.js"></script>
     <script>
         // Dynamic Chromecast script load from jsDelivr
@@ -172,11 +172,20 @@
             // Wait for quality levels to be populated
             qualityLevels.on('addqualitylevel', function() {
                 var levels = qualityLevels.levels_;
-                if (levels.length > 1 && !menuButton) {
+                if (levels.length > 0 && !menuButton) {
                     // Sort levels by height (descending)
                     levels.sort(function(a, b) {
                         return (b.height || 0) - (a.height || 0);
                     });
+
+                    // Define expected resolutions (in case some are missed)
+                    var expectedResolutions = [
+                        { height: 1080, label: '1080p' },
+                        { height: 720, label: '720p' },
+                        { height: 480, label: '480p' },
+                        { height: 360, label: '360p' },
+                        { height: 240, label: '240p' }
+                    ];
 
                     // Create the quality menu button
                     menuButton = player.controlBar.addChild('MenuButton', {
@@ -198,27 +207,56 @@
                         }
                     });
 
-                    // Add each quality level as an option
+                    // Add detected levels and fill with expected resolutions if missing
+                    var addedLevels = {};
                     for (var i = 0; i < levels.length; i++) {
-                        (function(index) {
-                            var level = levels[index];
-                            var height = level.height || 'Unknown';
+                        var level = levels[i];
+                        var height = level.height || 'Unknown';
+                        if (!addedLevels[height]) {
                             menu.addChild('menuItem', {
                                 label: height + 'p',
                                 selectable: true,
+                                callback: (function(index) {
+                                    return function() {
+                                        qualityLevels.selectedIndex_ = index;
+                                        for (var j = 0; j < qualityLevels.length; j++) {
+                                            qualityLevels[j].enabled = (j === index);
+                                        }
+                                        console.log('Switched to quality: ' + height + 'p');
+                                    };
+                                })(i)
+                            });
+                            addedLevels[height] = true;
+                        }
+                    }
+
+                    // Add missing expected resolutions
+                    expectedResolutions.forEach(function(res) {
+                        if (!addedLevels[res.height]) {
+                            menu.addChild('menuItem', {
+                                label: res.label,
+                                selectable: true,
                                 callback: function() {
-                                    qualityLevels.selectedIndex_ = index;
-                                    for (var j = 0; j < qualityLevels.length; j++) {
-                                        qualityLevels[j].enabled = (j === index);
+                                    var foundIndex = levels.findIndex(function(l) {
+                                        return l.height === res.height;
+                                    });
+                                    if (foundIndex >= 0) {
+                                        qualityLevels.selectedIndex_ = foundIndex;
+                                        for (var j = 0; j < qualityLevels.length; j++) {
+                                            qualityLevels[j].enabled = (j === foundIndex);
+                                        }
+                                        console.log('Switched to quality: ' + res.label);
+                                    } else {
+                                        console.log('Quality ' + res.label + ' not available in stream');
                                     }
-                                    console.log('Switched to quality: ' + height + 'p');
                                 }
                             });
-                        })(i);
-                    }
-                    console.log('Resolution switcher added with ' + levels.length + ' options');
-                } else if (levels.length <= 1) {
-                    console.log('No multiple resolutions detected');
+                        }
+                    });
+
+                    console.log('Resolution switcher added with ' + levels.length + ' detected options, supplemented with expected resolutions');
+                } else if (levels.length === 0) {
+                    console.log('No resolutions detected');
                 }
             });
 
