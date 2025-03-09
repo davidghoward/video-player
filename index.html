@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -151,7 +152,8 @@
                     overrideNative: true,
                     enableLowInitialPlaylist: true,
                     bandwidth: 5000000, // Initial bandwidth estimate (5 Mbps)
-                    useNetworkInformationApi: true
+                    useNetworkInformationApi: true,
+                    limitRenditionByQuality: false // Disable ABR quality limiting
                 }
             }
         });
@@ -173,12 +175,12 @@
             qualityLevels.on('addqualitylevel', function() {
                 var levels = qualityLevels.levels_;
                 if (levels.length > 0 && !menuButton) {
-                    // Sort levels by height (descending)
+                    // Sort detected levels by height (descending)
                     levels.sort(function(a, b) {
                         return (b.height || 0) - (a.height || 0);
                     });
 
-                    // Define expected resolutions (in case some are missed)
+                    // Define expected resolutions in descending order
                     var expectedResolutions = [
                         { height: 1080, label: '1080p' },
                         { height: 720, label: '720p' },
@@ -203,64 +205,48 @@
                             for (var i = 0; i < qualityLevels.length; i++) {
                                 qualityLevels[i].enabled = true;
                             }
+                            player.tech_.vhs.selectPlaylist = videojs.Vhs.handlers.Hls.prototype.selectPlaylist.bind(player.tech_.vhs);
                             console.log('Switched to Auto quality');
                         }
                     });
 
-                    // Add detected levels and fill with expected resolutions if missing
-                    var addedLevels = {};
-                    for (var i = 0; i < levels.length; i++) {
-                        var level = levels[i];
-                        var height = level.height || 'Unknown';
-                        if (!addedLevels[height]) {
-                            menu.addChild('menuItem', {
-                                label: height + 'p',
-                                selectable: true,
-                                callback: (function(index) {
-                                    return function() {
-                                        qualityLevels.selectedIndex_ = index;
-                                        for (var j = 0; j < qualityLevels.length; j++) {
-                                            qualityLevels[j].enabled = (j === index);
-                                        }
-                                        console.log('Switched to quality: ' + height + 'p');
-                                    };
-                                })(i)
-                            });
-                            addedLevels[height] = true;
-                        }
-                    }
-
-                    // Add missing expected resolutions
+                    // Add all expected resolutions, matching against detected levels
                     expectedResolutions.forEach(function(res) {
-                        if (!addedLevels[res.height]) {
-                            menu.addChild('menuItem', {
-                                label: res.label,
-                                selectable: true,
-                                callback: function() {
-                                    var foundIndex = levels.findIndex(function(l) {
-                                        return l.height === res.height;
-                                    });
-                                    if (foundIndex >= 0) {
-                                        qualityLevels.selectedIndex_ = foundIndex;
-                                        for (var j = 0; j < qualityLevels.length; j++) {
-                                            qualityLevels[j].enabled = (j === foundIndex);
-                                        }
-                                        console.log('Switched to quality: ' + res.label);
-                                    } else {
-                                        console.log('Quality ' + res.label + ' not available in stream');
+                        var foundIndex = levels.findIndex(function(l) {
+                            return l.height === res.height;
+                        });
+                        menu.addChild('menuItem', {
+                            label: res.label,
+                            selectable: true,
+                            callback: function() {
+                                if (foundIndex >= 0) {
+                                    qualityLevels.selectedIndex_ = foundIndex;
+                                    for (var j = 0; j < qualityLevels.length; j++) {
+                                        qualityLevels[j].enabled = (j === foundIndex);
                                     }
+                                    // Force manual selection by overriding selectPlaylist
+                                    player.tech_.vhs.selectPlaylist = function() {
+                                        return player.tech_.vhs.playlists.master.playlists[foundIndex];
+                                    };
+                                    console.log('Switched to quality: ' + res.label);
+                                } else {
+                                    console.log('Quality ' + res.label + ' not available in stream');
                                 }
-                            });
-                        }
+                            }
+                        });
                     });
 
-                    console.log('Resolution switcher added with ' + levels.length + ' detected options, supplemented with expected resolutions');
+                    console.log('Resolution switcher added with ' + levels.length + ' detected options');
+                    // Log detected levels for debugging
+                    levels.forEach(function(level, index) {
+                        console.log('Detected quality level ' + index + ': ' + (level.height || 'Unknown') + 'p, Bandwidth: ' + (level.bitrate || 'Unknown'));
+                    });
                 } else if (levels.length === 0) {
                     console.log('No resolutions detected');
                 }
             });
 
-            // Override ABR to allow manual selection (initially select the first playlist)
+            // Override ABR initially to allow manual selection
             player.tech_.vhs.selectPlaylist = function() {
                 return player.tech_.vhs.playlists.master.playlists[0];
             };
