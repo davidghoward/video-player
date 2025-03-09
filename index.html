@@ -150,7 +150,7 @@
                 vhs: {
                     overrideNative: true,
                     enableLowInitialPlaylist: true,
-                    bandwidth: 5000000, // Initial bandwidth estimate
+                    bandwidth: 5000000, // Initial bandwidth estimate (5 Mbps)
                     useNetworkInformationApi: true
                 }
             }
@@ -185,7 +185,7 @@
                     });
                     var menu = menuButton.menu;
 
-                    // Add an "Auto" option
+                    // Add an "Auto" option to re-enable ABR
                     menu.addChild('menuItem', {
                         label: 'Auto',
                         selectable: true,
@@ -200,21 +200,21 @@
 
                     // Add each quality level as an option
                     for (var i = 0; i < levels.length; i++) {
-                        var level = levels[i];
-                        var height = level.height || 'Unknown';
-                        menu.addChild('menuItem', {
-                            label: height + 'p',
-                            selectable: true,
-                            callback: (function(index) {
-                                return function() {
+                        (function(index) {
+                            var level = levels[index];
+                            var height = level.height || 'Unknown';
+                            menu.addChild('menuItem', {
+                                label: height + 'p',
+                                selectable: true,
+                                callback: function() {
                                     qualityLevels.selectedIndex_ = index;
                                     for (var j = 0; j < qualityLevels.length; j++) {
                                         qualityLevels[j].enabled = (j === index);
                                     }
                                     console.log('Switched to quality: ' + height + 'p');
-                                };
-                            })(i)
-                        });
+                                }
+                            });
+                        })(i);
                     }
                     console.log('Resolution switcher added with ' + levels.length + ' options');
                 } else if (levels.length <= 1) {
@@ -222,10 +222,17 @@
                 }
             });
 
-            // Disable ABR initially to allow manual selection
+            // Override ABR to allow manual selection (initially select the first playlist)
             player.tech_.vhs.selectPlaylist = function() {
                 return player.tech_.vhs.playlists.master.playlists[0];
             };
+
+            // Listen for quality changes to log them
+            qualityLevels.on('change', function() {
+                var selectedLevel = qualityLevels.selectedIndex_ >= 0 ? qualityLevels[qualityLevels.selectedIndex_] : null;
+                var height = selectedLevel ? selectedLevel.height + 'p' : 'Auto';
+                console.log('Quality changed to: ' + height);
+            });
         }
 
         // Chromecast initialization with delay
