@@ -1,5 +1,4 @@
-
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -205,7 +204,6 @@
                             for (var i = 0; i < qualityLevels.length; i++) {
                                 qualityLevels[i].enabled = true;
                             }
-                            player.tech_.vhs.selectPlaylist = videojs.Vhs.handlers.Hls.prototype.selectPlaylist.bind(player.tech_.vhs);
                             console.log('Switched to Auto quality');
                         }
                     });
@@ -224,10 +222,8 @@
                                     for (var j = 0; j < qualityLevels.length; j++) {
                                         qualityLevels[j].enabled = (j === foundIndex);
                                     }
-                                    // Force manual selection by overriding selectPlaylist
-                                    player.tech_.vhs.selectPlaylist = function() {
-                                        return player.tech_.vhs.playlists.master.playlists[foundIndex];
-                                    };
+                                    // Force reload to apply quality change
+                                    player.src(player.src());
                                     console.log('Switched to quality: ' + res.label);
                                 } else {
                                     console.log('Quality ' + res.label + ' not available in stream');
@@ -246,11 +242,6 @@
                 }
             });
 
-            // Override ABR initially to allow manual selection
-            player.tech_.vhs.selectPlaylist = function() {
-                return player.tech_.vhs.playlists.master.playlists[0];
-            };
-
             // Listen for quality changes to log them
             qualityLevels.on('change', function() {
                 var selectedLevel = qualityLevels.selectedIndex_ >= 0 ? qualityLevels[qualityLevels.selectedIndex_] : null;
@@ -260,26 +251,28 @@
         }
 
         // Chromecast initialization with delay
-        setTimeout(function() {
-            if (typeof videojs.getPlugin === 'function' && window.silvermineVideoJSChromecast) {
-                videojs.registerPlugin('chromecast', window.silvermineVideoJSChromecast);
-                if (typeof player.chromecast === 'function') {
-                    player.chromecast();
-                    console.log('Chromecast initialized');
+        player.on('loadedmetadata', function() {
+            setTimeout(function() {
+                if (typeof videojs.getPlugin === 'function' && window.silvermineVideoJSChromecast) {
+                    videojs.registerPlugin('chromecast', window.silvermineVideoJSChromecast);
+                    if (typeof player.chromecast === 'function') {
+                        player.chromecast();
+                        console.log('Chromecast initialized');
+                    } else {
+                        console.error('Chromecast initialization failed after registration');
+                    }
                 } else {
-                    console.error('Chromecast initialization failed after registration');
+                    console.error('Chromecast plugin not available - adding manual button');
+                    var chromecastButton = player.controlBar.addChild('button', {
+                        className: 'vjs-chromecast-button vjs-control',
+                        controlText: 'Cast'
+                    });
+                    chromecastButton.el().addEventListener('click', function() {
+                        alert('Chromecast plugin failed to load. Ensure a Chromecast device is available on your network.');
+                    });
                 }
-            } else {
-                console.error('Chromecast plugin not available - adding manual button');
-                var chromecastButton = player.controlBar.addChild('button', {
-                    className: 'vjs-chromecast-button vjs-control',
-                    controlText: 'Cast'
-                });
-                chromecastButton.el().addEventListener('click', function() {
-                    alert('Chromecast plugin failed to load. Ensure a Chromecast device is available on your network.');
-                });
-            }
-        }, 10000);
+            }, 5000); // Delay 5 seconds after metadata loads
+        });
 
         player.ready(function() {
             console.log('Player initialized');
