@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Video Player</title>
+  <title>Live Video Player with Quality Selector</title>
   <!-- Include Video.js CSS -->
   <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet">
   <style>
@@ -14,14 +14,36 @@
       height: 100vh;
       background-color: #f0f0f0;
     }
+    .vjs-quality-menu {
+      position: absolute;
+      bottom: 50px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: none;
+      flex-direction: column;
+      z-index: 1000;
+    }
+    .vjs-quality-menu button {
+      background: none;
+      border: none;
+      color: white;
+      padding: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .vjs-quality-menu button:hover {
+      background: #444;
+    }
   </style>
 </head>
 <body>
   <!-- Video Player -->
   <video-js id="live-video" class="video-js vjs-default-skin" controls preload="auto" width="720" height="405" data-setup='{
     "fluid": true,
-    "liveui": true,
-    "controls": true
+    "liveui": true
   }'>
     <source src="https://customer-i6o8ko0q19q37cmy.cloudflarestream.com/b7eb864bce238f17bdbf39942185668d/manifest/video.m3u8" type="application/x-mpegURL">
     <p class="vjs-no-js">
@@ -32,40 +54,61 @@
 
   <!-- Include Video.js JavaScript -->
   <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
+  <!-- Include the Quality Levels plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.min.js"></script>
   <script>
     // Initialize the Video.js player
     const player = videojs('live-video', {
-      liveui: true, // Enables live streaming user interface
+      liveui: true, // Enables live streaming UI
       controlBar: {
-        fullscreenToggle: true, // Fullscreen support
-        pictureInPictureToggle: true // PiP support
+        fullscreenToggle: true, // Enable fullscreen
+        pictureInPictureToggle: true // Enable PiP
       },
       html5: {
         hls: {
-          debug: true // Enable HLS debugging for better error tracking
+          debug: true // Enable HLS debugging
         }
       }
     });
 
-    // Add error handling to log issues with playback
-    player.on('error', function() {
-      console.error('Video.js Error:', player.error());
+    // Create a custom quality selector menu
+    player.ready(() => {
+      const qualityLevels = player.qualityLevels();
+
+      // Create the Quality Selector UI
+      const menu = document.createElement('div');
+      menu.className = 'vjs-quality-menu';
+      document.body.appendChild(menu);
+
+      const button = document.createElement('button');
+      button.textContent = 'Quality';
+      button.onclick = () => {
+        menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+      };
+
+      // Add Quality Selector Button to the control bar
+      player.controlBar.el().appendChild(button);
+
+      qualityLevels.on('addqualitylevel', () => {
+        menu.innerHTML = ''; // Clear previous menu items
+        qualityLevels.levels_.forEach((level, index) => {
+          const qualityButton = document.createElement('button');
+          qualityButton.textContent = `${level.height}p`;
+          qualityButton.onclick = () => {
+            // Change to the selected quality
+            for (let i = 0; i < qualityLevels.length; i++) {
+              qualityLevels[i].enabled = i === index;
+            }
+            menu.style.display = 'none';
+          };
+          menu.appendChild(qualityButton);
+        });
+      });
     });
 
-    // Ensure Picture-in-Picture is configured if supported
-    player.ready(() => {
-      if ('pictureInPictureEnabled' in document) {
-        player.controlBar.addChild('button', {
-          text: 'Enable PiP',
-          clickHandler: () => {
-            if (document.pictureInPictureElement) {
-              document.exitPictureInPicture();
-            } else {
-              player.el().requestPictureInPicture();
-            }
-          }
-        });
-      }
+    // Error handling for better debugging
+    player.on('error', function() {
+      console.error('Player Error:', player.error());
     });
   </script>
 </body>
