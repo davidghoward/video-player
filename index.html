@@ -22,11 +22,11 @@
             width: 100% !important;
             height: auto !important;
             aspect-ratio: 16 / 9;
-            background-color: #1A1A1A; /* Dark background like Cloudflare */
+            background-color: #1A1A1A;
             border-radius: 8px;
         }
         .vjs-control-bar {
-            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent dark bar */
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex !important;
             align-items: center;
             justify-content: center;
@@ -37,7 +37,7 @@
             visibility: visible !important;
         }
         .vjs-big-play-button {
-            background-color: #007bff; /* Blue play button like Cloudflare */
+            background-color: #007bff;
             border: none;
             border-radius: 50%;
             width: 60px;
@@ -59,7 +59,7 @@
         }
         .vjs-quality-menu {
             position: absolute;
-            bottom: 100%; /* Above the control bar */
+            bottom: 100%;
             right: 0;
             background: rgba(0, 0, 0, 0.8);
             color: white;
@@ -147,6 +147,9 @@
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 
     <script>
+        // Prevent multiple initializations
+        let playerInitialized = false;
+
         const player = videojs('live-video', {
             liveui: true,
             controlBar: {
@@ -162,6 +165,12 @@
                     limitRenditionByQuality: false,
                     debug: true
                 }
+            }
+        }, function() {
+            if (!playerInitialized) {
+                playerInitialized = true;
+                console.log('Player initialized');
+                setupQualitySelector(this);
             }
         });
 
@@ -181,11 +190,13 @@
                 }
             });
 
+            // Rebuild menu when levels are added
             qualityLevels.on('addqualitylevel', () => {
                 const levels = qualityLevels.levels_;
                 if (levels.length > 0) {
-                    const menu = document.createElement('div');
+                    const menu = player.el().querySelector('.vjs-quality-menu') || document.createElement('div');
                     menu.className = 'vjs-quality-menu';
+                    menu.innerHTML = ''; // Clear previous items
                     qualityButton.el().appendChild(menu);
 
                     const expectedResolutions = [
@@ -199,7 +210,7 @@
                     menu.innerHTML = '<button data-quality="auto">Auto</button>';
                     expectedResolutions.forEach(res => {
                         const found = levels.find(l => l.height === res.height);
-                        if (found || res.height === 720) { // Ensure 720p is included
+                        if (found) {
                             const button = document.createElement('button');
                             button.textContent = res.label;
                             button.dataset.quality = res.height;
@@ -210,7 +221,7 @@
                                     for (let i = 0; i < qualityLevels.length; i++) {
                                         qualityLevels[i].enabled = (i === index);
                                     }
-                                    player.src(player.src()); // Force reload to apply quality
+                                    player.src(player.src()); // Force reload
                                     console.log('Switched to quality: ' + res.label);
                                 } else if (button.dataset.quality === 'auto') {
                                     qualityLevels.selectedIndex_ = -1;
@@ -273,18 +284,6 @@
                     chromecastButton.el().innerHTML = '<span class="vjs-icon-placeholder" style="font-size: 1.5em;">📺</span>';
                 }
             }, 5000);
-        });
-
-        player.ready(() => {
-            console.log('Player initialized');
-            setupQualitySelector(player);
-
-            const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
-            if (bigPlayButton) {
-                bigPlayButton.addEventListener('click', () => {
-                    console.log('Play button clicked');
-                });
-            }
         });
 
         player.on('play', () => {
