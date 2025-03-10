@@ -33,19 +33,30 @@
   <!-- Include Video.js JavaScript -->
   <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
   <script>
+    // Initialize the Video.js player
     const player = videojs('live-video', {
-      liveui: true, // Enables the live user interface for streaming
+      liveui: true, // Enables live streaming user interface
       controlBar: {
-        fullscreenToggle: true, // Fullscreen functionality
+        fullscreenToggle: true, // Fullscreen support
         pictureInPictureToggle: true // PiP support
+      },
+      html5: {
+        hls: {
+          debug: true // Enable HLS debugging for better error tracking
+        }
       }
     });
 
-    // Optional: Add picture-in-picture support manually if required
+    // Add error handling to log issues with playback
+    player.on('error', function() {
+      console.error('Video.js Error:', player.error());
+    });
+
+    // Ensure Picture-in-Picture is configured if supported
     player.ready(() => {
       if ('pictureInPictureEnabled' in document) {
         player.controlBar.addChild('button', {
-          text: 'PiP',
+          text: 'Enable PiP',
           clickHandler: () => {
             if (document.pictureInPictureElement) {
               document.exitPictureInPicture();
