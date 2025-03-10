@@ -1,115 +1,311 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Video Player with Quality Selector</title>
-  <!-- Include Video.js CSS -->
-  <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet">
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-color: #f0f0f0;
-    }
-    .vjs-quality-menu {
-      position: absolute;
-      bottom: 50px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      display: none;
-      flex-direction: column;
-      z-index: 1000;
-    }
-    .vjs-quality-menu button {
-      background: none;
-      border: none;
-      color: white;
-      padding: 10px;
-      cursor: pointer;
-      text-align: left;
-    }
-    .vjs-quality-menu button:hover {
-      background: #444;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudflare Stream Player</title>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        .video-container {
+            max-width: 800px;
+            width: 100%;
+        }
+        .video-js {
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 16 / 9;
+            background-color: #1A1A1A; /* Dark background like Cloudflare */
+            border-radius: 8px;
+        }
+        .vjs-control-bar {
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent dark bar */
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            min-height: 3.5em;
+            padding: 0 10px;
+            transition: opacity 0.3s ease;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        .vjs-big-play-button {
+            background-color: #007bff; /* Blue play button like Cloudflare */
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 30px;
+            transition: transform 0.2s ease;
+        }
+        .vjs-big-play-button:hover {
+            transform: scale(1.1);
+        }
+        .vjs-playing .vjs-big-play-button {
+            display: none !important;
+        }
+        .vjs-live.vjs-dvr .vjs-progress-control {
+            display: flex !important;
+        }
+        .vjs-live:not(.vjs-dvr) .vjs-progress-control {
+            display: none !important;
+        }
+        .vjs-quality-menu {
+            position: absolute;
+            bottom: 100%; /* Above the control bar */
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+            min-width: 100px;
+        }
+        .vjs-quality-menu button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 10px;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+            transition: background 0.2s ease;
+        }
+        .vjs-quality-menu button:hover {
+            background: #444;
+        }
+        .vjs-quality-selector {
+            width: 3em;
+            order: 5;
+            display: inline-block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        .vjs-quality-selector .vjs-icon-placeholder::before {
+            content: "⚙️";
+            font-size: 1.5em;
+            color: #fff !important;
+            display: block !important;
+            position: relative;
+            top: -2px;
+        }
+        .vjs-chromecast-button {
+            width: 3em;
+            order: 4;
+            display: inline-block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        .vjs-chromecast-button .vjs-icon-placeholder::before {
+            content: "📺";
+            font-size: 1.5em;
+            color: #fff !important;
+            display: block !important;
+        }
+        @media (max-width: 767px) {
+            .video-container {
+                padding: 0 10px;
+            }
+            .video-js {
+                width: 100% !important;
+                height: auto !important;
+                aspect-ratio: 16 / 9;
+            }
+        }
+    </style>
 </head>
 <body>
-  <!-- Video Player -->
-  <video-js id="live-video" class="video-js vjs-default-skin" controls preload="auto" width="720" height="405" data-setup='{
-    "fluid": true,
-    "liveui": true
-  }'>
-    <source src="https://customer-i6o8ko0q19q37cmy.cloudflarestream.com/b7eb864bce238f17bdbf39942185668d/manifest/video.m3u8" type="application/x-mpegURL">
-    <p class="vjs-no-js">
-      To view this video please enable JavaScript, and consider upgrading to a
-      web browser that supports HTML5 video.
-    </p>
-  </video-js>
+    <div class="video-container">
+        <video-js id="live-video" class="video-js vjs-default-skin vjs-live" controls preload="auto" data-setup='{"fluid": true, "liveui": true}'>
+            <source src="https://customer-i6o8ko0q19q37cmy.cloudflarestream.com/b7eb864bce238f17bdbf39942185668d/manifest/video.m3u8" type="application/x-mpegURL">
+            <p class="vjs-no-js">
+                To view this video please enable JavaScript, and consider upgrading to a
+                web browser that supports HTML5 video.
+            </p>
+        </video-js>
+    </div>
 
-  <!-- Include Video.js JavaScript -->
-  <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
-  <!-- Include the Quality Levels plugin -->
-  <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.min.js"></script>
-  <script>
-    // Initialize the Video.js player
-    const player = videojs('live-video', {
-      liveui: true, // Enables live streaming UI
-      controlBar: {
-        fullscreenToggle: true, // Enable fullscreen
-        pictureInPictureToggle: true // Enable PiP
-      },
-      html5: {
-        hls: {
-          debug: true // Enable HLS debugging
-        }
-      }
-    });
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.18.0/dist/videojs-http-streaming.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@silvermine/videojs-chromecast@1.5.0/dist/silvermine-videojs-chromecast.min.js"></script>
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 
-    // Create a custom quality selector menu
-    player.ready(() => {
-      const qualityLevels = player.qualityLevels();
-
-      // Create the Quality Selector UI
-      const menu = document.createElement('div');
-      menu.className = 'vjs-quality-menu';
-      document.body.appendChild(menu);
-
-      const button = document.createElement('button');
-      button.textContent = 'Quality';
-      button.onclick = () => {
-        menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
-      };
-
-      // Add Quality Selector Button to the control bar
-      player.controlBar.el().appendChild(button);
-
-      qualityLevels.on('addqualitylevel', () => {
-        menu.innerHTML = ''; // Clear previous menu items
-        qualityLevels.levels_.forEach((level, index) => {
-          const qualityButton = document.createElement('button');
-          qualityButton.textContent = `${level.height}p`;
-          qualityButton.onclick = () => {
-            // Change to the selected quality
-            for (let i = 0; i < qualityLevels.length; i++) {
-              qualityLevels[i].enabled = i === index;
+    <script>
+        const player = videojs('live-video', {
+            liveui: true,
+            controlBar: {
+                fullscreenToggle: true,
+                pictureInPictureToggle: true
+            },
+            html5: {
+                vhs: {
+                    overrideNative: true,
+                    enableLowInitialPlaylist: true,
+                    bandwidth: 5000000,
+                    useNetworkInformationApi: true,
+                    limitRenditionByQuality: false,
+                    debug: true
+                }
             }
-            menu.style.display = 'none';
-          };
-          menu.appendChild(qualityButton);
         });
-      });
-    });
 
-    // Error handling for better debugging
-    player.on('error', function() {
-      console.error('Player Error:', player.error());
-    });
-  </script>
+        player.src({
+            src: 'https://customer-i6o8ko0q19q37cmy.cloudflarestream.com/b7eb864bce238f17bdbf39942185668d/manifest/video.m3u8',
+            type: 'application/x-mpegURL'
+        });
+
+        // Quality Selector
+        function setupQualitySelector(player) {
+            const qualityLevels = player.qualityLevels();
+            const qualityButton = player.controlBar.addChild('button', {
+                className: 'vjs-quality-selector vjs-control',
+                clickHandler: function() {
+                    const menu = player.el().querySelector('.vjs-quality-menu');
+                    menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+                }
+            });
+
+            qualityLevels.on('addqualitylevel', () => {
+                const levels = qualityLevels.levels_;
+                if (levels.length > 0) {
+                    const menu = document.createElement('div');
+                    menu.className = 'vjs-quality-menu';
+                    qualityButton.el().appendChild(menu);
+
+                    const expectedResolutions = [
+                        { height: 1080, label: '1080p' },
+                        { height: 720, label: '720p' },
+                        { height: 480, label: '480p' },
+                        { height: 360, label: '360p' },
+                        { height: 240, label: '240p' }
+                    ];
+
+                    menu.innerHTML = '<button data-quality="auto">Auto</button>';
+                    expectedResolutions.forEach(res => {
+                        const found = levels.find(l => l.height === res.height);
+                        if (found || res.height === 720) { // Ensure 720p is included
+                            const button = document.createElement('button');
+                            button.textContent = res.label;
+                            button.dataset.quality = res.height;
+                            button.addEventListener('click', () => {
+                                const index = levels.findIndex(l => l.height === parseInt(button.dataset.quality));
+                                if (index >= 0) {
+                                    qualityLevels.selectedIndex_ = index;
+                                    for (let i = 0; i < qualityLevels.length; i++) {
+                                        qualityLevels[i].enabled = (i === index);
+                                    }
+                                    player.src(player.src()); // Force reload to apply quality
+                                    console.log('Switched to quality: ' + res.label);
+                                } else if (button.dataset.quality === 'auto') {
+                                    qualityLevels.selectedIndex_ = -1;
+                                    for (let i = 0; i < qualityLevels.length; i++) {
+                                        qualityLevels[i].enabled = true;
+                                    }
+                                    console.log('Switched to Auto quality');
+                                }
+                                menu.style.display = 'none';
+                            });
+                            menu.appendChild(button);
+                        }
+                    });
+
+                    console.log('Resolution switcher added with ' + levels.length + ' detected options');
+                    levels.forEach((level, index) => {
+                        console.log('Detected quality level ' + index + ': ' + (level.height || 'Unknown') + 'p, Bandwidth: ' + (level.bitrate || 'Unknown'));
+                    });
+                } else {
+                    console.log('No resolutions detected');
+                }
+            });
+
+            // Close menu on outside click
+            document.addEventListener('click', e => {
+                const menu = player.el().querySelector('.vjs-quality-menu');
+                if (!qualityButton.el().contains(e.target) && menu.style.display === 'flex') {
+                    menu.style.display = 'none';
+                }
+            });
+
+            qualityLevels.on('change', () => {
+                const selectedLevel = qualityLevels.selectedIndex_ >= 0 ? qualityLevels[qualityLevels.selectedIndex_] : null;
+                const height = selectedLevel ? selectedLevel.height + 'p' : 'Auto';
+                console.log('Quality changed to: ' + height);
+            });
+        }
+
+        // Chromecast Setup
+        player.on('loadedmetadata', () => {
+            console.log('Stream metadata loaded');
+            setTimeout(() => {
+                if (typeof videojs.getPlugin === 'function' && window.silvermineVideoJSChromecast) {
+                    videojs.registerPlugin('chromecast', window.silvermineVideoJSChromecast);
+                    if (typeof player.chromecast === 'function') {
+                        player.chromecast();
+                        console.log('Chromecast initialized');
+                        player.controlBar.addChild('chromecastButton', {});
+                    } else {
+                        console.error('Chromecast initialization failed after registration');
+                    }
+                } else {
+                    console.error('Chromecast plugin not available - adding manual button');
+                    const chromecastButton = player.controlBar.addChild('button', {
+                        className: 'vjs-chromecast-button vjs-control',
+                        clickHandler: () => {
+                            alert('Chromecast plugin failed to load. Ensure a Chromecast device is available on your network.');
+                        }
+                    });
+                    chromecastButton.el().innerHTML = '<span class="vjs-icon-placeholder" style="font-size: 1.5em;">📺</span>';
+                }
+            }, 5000);
+        });
+
+        player.ready(() => {
+            console.log('Player initialized');
+            setupQualitySelector(player);
+
+            const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
+            if (bigPlayButton) {
+                bigPlayButton.addEventListener('click', () => {
+                    console.log('Play button clicked');
+                });
+            }
+        });
+
+        player.on('play', () => {
+            console.log('Playback started');
+            player.bigPlayButton.hide();
+            player.controlBar.show();
+        });
+
+        player.on('waiting', () => {
+            console.log('Waiting for stream data');
+        });
+
+        player.on('stalled', () => {
+            console.log('Stream stalled - no data available');
+        });
+
+        player.on('error', () => {
+            const error = player.error();
+            console.error('Player Error:', error);
+            alert('Stream error: ' + (error ? error.message : 'Unknown error'));
+        });
+    </script>
 </body>
 </html>
